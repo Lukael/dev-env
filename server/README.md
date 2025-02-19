@@ -139,6 +139,15 @@ https://{your-uuid}.try.coder.app
 docker compose up -d
 ```
 
+### 5. Adding Template
+1. Create Template
+2. Choose a starter template
+3. Source Code
+4. build/Dockerfile에 repo에 있는 파일로 replace
+5. main.tf에 repo에 있는 파일로 replace
+6. main.tf에 Line 227 부터 있는 /dev/nvidia*를 현재 GPU에 있는 서버 개수와 동일하게 변경
+7. Build & Publish
+
 ## 3. GPU Monitoring tool 설치 
 
 아래 Reference 대로 진행해보았는데 GPU docker 쪽 Nvidia-driver issue가 있어서 안되는 듯?
