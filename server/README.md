@@ -134,10 +134,24 @@ https://{your-uuid}.try.coder.app
 
 (링크 주소 변경했을 때도 적용되는지는 확인 필요)
 
+### 3-1. NGINX 설정
+* [NGINX settings](https://coder.com/docs/tutorials/reverse-proxy-nginx)
+
+기본 포트 변경 필요함
+
 ### 4. Start Coder in background
 ```bash
 docker compose up -d
 ```
+
+### 5. Adding Template
+1. Create Template
+2. Choose a starter template
+3. Source Code
+4. build/Dockerfile에 repo에 있는 파일로 replace
+5. main.tf에 repo에 있는 파일로 replace
+6. main.tf에 Line 227 부터 있는 /dev/nvidia*를 현재 GPU에 있는 서버 개수와 동일하게 변경
+7. Build & Publish
 
 ## 3. GPU Monitoring tool 설치 
 
