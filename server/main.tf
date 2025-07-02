@@ -20,11 +20,11 @@ data "coder_parameter" "ram" {
   type         = "number"
   icon         = "https://raw.githubusercontent.com/matifali/logos/main/memory.svg"
   mutable      = true
-  default      = 64
+  default      = 16
   order        = 2
   validation {
-    min = 16
-    max = 512
+    min = 8
+    max = 32
   }
 }
 
@@ -149,7 +149,6 @@ resource "coder_agent" "main" {
 module "code-server" {
   count     = data.coder_workspace.me.start_count
   source    = "registry.coder.com/modules/code-server/coder"
-  version   = "1.0.29"
   agent_id  = coder_agent.main.id
   folder    = "/home/${local.username}/"
   subdomain = false
@@ -159,7 +158,6 @@ module "code-server" {
 module "jupyterlab" {
   count     = data.coder_workspace.me.start_count
   source    = "registry.coder.com/modules/jupyterlab/coder"
-  version   = "1.0.23"
   subdomain = false
   agent_id  = coder_agent.main.id
   order     = 3
@@ -228,13 +226,6 @@ resource "docker_container" "workspace" {
   devices {
     host_path = "/dev/nvidia0"
   }
-  devices {
-    host_path = "/dev/nvidia1"
-  }
-  devices {
-    host_path = "/dev/nvidia2"
-  }
-  
   
   devices {
     host_path = "/dev/nvidiactl"
