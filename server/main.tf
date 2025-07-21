@@ -155,12 +155,20 @@ module "code-server" {
   order     = 2
 }
 
+module "cursor" {
+  count    = data.coder_workspace.me.start_count
+  source   = "registry.coder.com/coder/cursor/coder"
+  agent_id = coder_agent.main.id
+  folder    = "/home/${local.username}/"
+  order     = 3
+}
+
 module "jupyterlab" {
   count     = data.coder_workspace.me.start_count
   source    = "registry.coder.com/modules/jupyterlab/coder"
   subdomain = false
   agent_id  = coder_agent.main.id
-  order     = 3
+  order     = 4
 }
 
 module "filebrowser" {
@@ -169,7 +177,7 @@ module "filebrowser" {
   version   = "1.0.29"
   subdomain = false
   agent_id  = coder_agent.main.id
-  order     = 4
+  order     = 5
 }
 
 resource "docker_image" "main" {
