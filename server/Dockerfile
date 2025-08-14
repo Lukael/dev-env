@@ -38,6 +38,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     zip && \
     apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
+# Install lazygit
+RUN LAZYGIT_VERSION=$(curl -s "https://api.github.com/repos/jesseduffield/lazygit/releases/latest" | \grep -Po '"tag_name": *"v\K[^"]*')
+    curl -Lo lazygit.tar.gz "https://github.com/jesseduffield/lazygit/releases/download/v${LAZYGIT_VERSION}/lazygit_${LAZYGIT_VERSION}_Linux_x86_64.tar.gz"
+    tar xf lazygit.tar.gz lazygit
+    sudo install lazygit -D -t /usr/local/bin/
+    rm -rf lazygit.tar.gz
+
 # Add a user `${USERNAME}` so that you're not developing as the `root` user
 RUN groupadd -g ${GROUPID} ${USERNAME} && \
     useradd ${USERNAME} \
@@ -55,31 +62,34 @@ WORKDIR /home/${USERNAME}
 
 RUN pipx ensurepath
 
-# Install packages inside the new environment
-RUN pip install --upgrade --no-cache-dir pip setuptools wheel && \
-    pip install --upgrade --no-cache-dir \
-    ipywidgets \
-    jupyterlab \
-    matplotlib \
-    nltk \
-    notebook \
-    numpy \
-    pandas \
-    Pillow \
-    plotly \
-    PyYAML \
-    scipy \
-    scikit-image \
-    scikit-learn \
-    sympy \
-    seaborn \
-    tqdm && \
-    pip cache purge && \
-    # Set path of python packages
-    echo "# Set path of python packages" >>/home/${USERNAME}/.bashrc && \
-    echo 'export PATH=$HOME/.local/bin:$PATH' >>/home/${USERNAME}/.bashrc
+# Install poetry
+RUN pipx install poetry
 
-# Install pytorch
-RUN pip install --upgrade --no-cache-dir torch torchvision torchaudio torchtext torchserve && \
-    pip install --upgrade --no-cache-dir lightning && \
-    pip cache purge
+# # Install packages inside the new environment
+# RUN pip install --upgrade --no-cache-dir pip setuptools wheel && \
+#     pip install --upgrade --no-cache-dir \
+#     ipywidgets \
+#     jupyterlab \
+#     matplotlib \
+#     nltk \
+#     notebook \
+#     numpy \
+#     pandas \
+#     Pillow \
+#     plotly \
+#     PyYAML \
+#     scipy \
+#     scikit-image \
+#     scikit-learn \
+#     sympy \
+#     seaborn \
+#     tqdm && \
+#     pip cache purge && \
+#     # Set path of python packages
+#     echo "# Set path of python packages" >>/home/${USERNAME}/.bashrc && \
+#     echo 'export PATH=$HOME/.local/bin:$PATH' >>/home/${USERNAME}/.bashrc
+
+# # Install pytorch
+# RUN pip install --upgrade --no-cache-dir torch torchvision torchaudio torchtext torchserve && \
+#     pip install --upgrade --no-cache-dir lightning && \
+#     pip cache purge
