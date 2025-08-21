@@ -54,6 +54,9 @@ RUN groupadd -g ${GROUPID} ${USERNAME} && \
 # Change to your user
 USER ${USERNAME}
 
+# Change shell to zsh
+RUN sudo chsh -s $(which zsh) $(whoami)
+
 # Change Workdir
 WORKDIR /home/${USERNAME}
 
