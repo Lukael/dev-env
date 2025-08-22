@@ -39,6 +39,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     zip && \
     apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
+# Install lazygit
+RUN set -eux; \
+    LAZYGIT_VERSION=$(curl -s "https://api.github.com/repos/jesseduffield/lazygit/releases/latest" \
+        | grep -Po '"tag_name": *"v\K[^"]*') && \
+    curl -Lo /tmp/lazygit.tar.gz \
+        "https://github.com/jesseduffield/lazygit/releases/download/v${LAZYGIT_VERSION}/lazygit_${LAZYGIT_VERSION}_Linux_x86_64.tar.gz" && \
+    tar -C /tmp -xf /tmp/lazygit.tar.gz lazygit && \
+    install -m 0755 /tmp/lazygit /usr/local/bin/lazygit && \
+    rm -f /tmp/lazygit.tar.gz /tmp/lazygit
+
 # Change shell to zsh
 RUN chsh -s /bin/zsh
 
@@ -67,22 +77,25 @@ RUN pipx install poetry
 
 # Install oh-my-zsh
 RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended || true && \
-    cp -f ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc
+    cp -f $HOME/.oh-my-zsh/templates/zshrc.zsh-template $HOME/.zshrc
 
 # Install zsh plugins
-RUN ZSH_CUSTOM="${ZSH_CUSTOM:-~/.oh-my-zsh/custom}" \
-    && git clone --depth=1 https://github.com/MichaelAquilina/zsh-autoswitch-virtualenv.git "$ZSH_CUSTOM/plugins/zsh-autoswitch-virtualenv" \
+RUN ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}" \
+    && git clone --depth=1 https://github.com/MichaelAquilina/zsh-autoswitch-virtualenv.git "$ZSH_CUSTOM/plugins/autoswitch_virtualenv" \
     && git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting.git "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting"
 
-RUN if grep -qE '^plugins=' ~/.zshrc; then \
-    sed -i 's/^plugins=.*/plugins=(git zsh-autosuggestions zsh-autoswitch-virtualenv zsh-syntax-highlighting)/' ~/.zshrc; \
+RUN if grep -qE '^plugins=' $HOME/.zshrc; then \
+    sed -i 's/^plugins=.*/plugins=(git autoswitch_virtualenv zsh-syntax-highlighting)/' $HOME/.zshrc; \
   else \
-    sed -i '/^source \$ZSH\/oh-my-zsh.sh/i plugins=(git zsh-autosuggestions zsh-autoswitch-virtualenv zsh-syntax-highlighting)' ~/.zshrc; \
+    sed -i '/^source \$ZSH\/oh-my-zsh.sh/i plugins=(git autoswitch_virtualenv zsh-syntax-highlighting)' $HOME/.zshrc; \
   fi
 
 # Install powerlevel10k
-RUN curl -fsSL https://raw.githubusercontent.com/romkatv/powerlevel10k/master/config/p10k-classic.zsh -o ~/.p10k.zsh \
-    && echo '\n[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh' >> ~/.zshrc
+RUN ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}" \
+    && git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$ZSH_CUSTOM/themes/powerlevel10k" \
+    && sed -i 's|^ZSH_THEME=.*|ZSH_THEME="powerlevel10k/powerlevel10k"|' $HOME/.zshrc \
+    && curl -fsSL https://raw.githubusercontent.com/romkatv/powerlevel10k/master/config/p10k-classic.zsh -o $HOME/.p10k.zsh \
+    && printf '\n[[ -f $HOME/.p10k.zsh ]] && source $HOME/.p10k.zsh\n' >> $HOME/.zshrc
 
 # Change git config
 RUN git config --global push.autoSetupRemote true
