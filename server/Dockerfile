@@ -31,6 +31,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 python3-dev python3-pip python-is-python3 \
     sudo \
     tmux \
+    byobu \
     unzip \
     vim \
     wget \
