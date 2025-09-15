@@ -13,27 +13,22 @@ locals {
   username = data.coder_workspace_owner.me.name
 }
 
-data "coder_parameter" "ram" {
-  name         = "ram"
-  display_name = "RAM (GB)"
-  description  = "Choose amount of RAM (min: 16 GB, max: 512 GB)"
-  type         = "number"
-  icon         = "https://raw.githubusercontent.com/matifali/logos/main/memory.svg"
-  mutable      = true
-  default      = 16
-  order        = 2
-  validation {
-    min = 8
-    max = 32
-  }
-}
+### You need to add server ssh connection in here
+data "coder_parameter" "docker_host" {
+  name         = "docker_host"
+  display_name = "Docker Host"
+  description  = "Select which GPU server (Docker host) to use"
+  type         = "string"
+  icon         = "https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/png/docker.png"
+  mutable      = false
 
-resource "coder_metadata" "workspace_info" {
-  count       = data.coder_workspace.me.start_count
-  resource_id = docker_image.main.id
-  item {
-    key   = "RAM (GB)"
-    value = data.coder_parameter.ram.value
+  option {
+    name  = "PC 0"
+    value = ""
+  }
+  option {
+    name  = "Workstation 1"
+    value = "ssh://ubuntu@work.iilab.io:16870"
   }
 }
 
@@ -45,7 +40,8 @@ variable "docker_socket" {
 
 provider "docker" {
   # Defaulting to null if the variable is an empty string lets us have an optional variable without having to set our own default
-  host = var.docker_socket != "" ? var.docker_socket : null
+  host = data.coder_parameter.docker_host.value != "" ? data.coder_parameter.docker_host.value : null
+  ssh_opts = ["-i", "/var/lib/coder/.ssh/docker"]
 }
 
 data "coder_provisioner" "me" {}
@@ -174,7 +170,6 @@ module "jupyterlab" {
 module "filebrowser" {
   count     = data.coder_workspace.me.start_count
   source    = "registry.coder.com/modules/filebrowser/coder"
-  version   = "1.0.29"
   subdomain = false
   agent_id  = coder_agent.main.id
   order     = 5
@@ -218,7 +213,6 @@ resource "docker_volume" "opt_volume" {
 resource "docker_container" "workspace" {
   count = data.coder_workspace.me.start_count
   image = docker_image.main.name
-  memory   = data.coder_parameter.ram.value * 1024
   gpus     = "all"
   # Uses lower() to avoid Docker restriction on container names.
   name = "coder-${data.coder_workspace_owner.me.name}-${lower(data.coder_workspace.me.name)}"
@@ -231,9 +225,9 @@ resource "docker_container" "workspace" {
 
   
   # NEED TO BE CHANGED ALONG GPU NUMBER OF HOST
-  devices {
-    host_path = "/dev/nvidia0"
-  }
+  # devices {
+  #   host_path = "/dev/nvidia0"
+  # }
   
   devices {
     host_path = "/dev/nvidiactl"
