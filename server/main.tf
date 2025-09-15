@@ -39,7 +39,7 @@ data "coder_parameter" "docker_host" {
   description  = "Select which GPU server (Docker host) to use"
   type         = "string"
   icon         = "https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/png/docker.png"
-  order        = 3
+  order        = 1
   mutable      = false
 
   option {
