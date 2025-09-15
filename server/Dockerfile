@@ -103,3 +103,6 @@ RUN byobu-enable
 
 # Change git config
 RUN git config --global push.autoSetupRemote true
+
+# Install poetry shell
+RUN poetry self add poetry-plugin-shell
