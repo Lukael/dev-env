@@ -28,7 +28,7 @@ data "coder_parameter" "docker_host" {
   }
   option {
     name  = "Workstation 1"
-    value = "ssh://ubuntu@work.iilab.io:16870"
+    value = ""
   }
 }
 
