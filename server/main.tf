@@ -19,7 +19,7 @@ data "coder_parameter" "cuda_version" {
   description  = "Enter the CUDA version for this workspace"
   type         = "string"
   mutable      = false
-  default      = "12.2"
+  default      = "12.4.1"
 }
 
 data "coder_parameter" "ubuntu_version" {
