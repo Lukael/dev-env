@@ -20,6 +20,7 @@ data "coder_parameter" "cuda_version" {
   type         = "string"
   mutable      = false
   default      = "12.4.1"
+  order        = 3
 }
 
 data "coder_parameter" "ubuntu_version" {
@@ -29,6 +30,7 @@ data "coder_parameter" "ubuntu_version" {
   type         = "string"
   mutable      = false
   default      = "22.04"
+  order        = 2
 }
 
 data "coder_parameter" "docker_host" {
@@ -37,6 +39,7 @@ data "coder_parameter" "docker_host" {
   description  = "Select which GPU server (Docker host) to use"
   type         = "string"
   icon         = "https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/png/docker.png"
+  order        = 3
   mutable      = false
 
   option {
