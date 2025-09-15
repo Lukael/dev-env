@@ -101,6 +101,9 @@ RUN ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}" \
 # Set default as byobu
 RUN byobu-enable
 
+# Add path in zshrc
+RUN echo 'export PATH=$HOME/.local/bin:$PATH' >> ~/.zshrc
+
 # Change git config
 RUN git config --global push.autoSetupRemote true
 
