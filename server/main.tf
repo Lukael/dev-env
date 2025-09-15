@@ -13,7 +13,24 @@ locals {
   username = data.coder_workspace_owner.me.name
 }
 
-### You need to add server ssh connection in here
+data "coder_parameter" "cuda_version" {
+  name         = "cuda_version"
+  display_name = "CUDA Version"
+  description  = "Enter the CUDA version for this workspace"
+  type         = "string"
+  mutable      = false
+  default      = "12.2"
+}
+
+data "coder_parameter" "ubuntu_version" {
+  name         = "ubuntu_version"
+  display_name = "Ubuntu Version"
+  description  = "Enter the Ubuntu base version (e.g. 20.04, 22.04)"
+  type         = "string"
+  mutable      = false
+  default      = "22.04"
+}
+
 data "coder_parameter" "docker_host" {
   name         = "docker_host"
   display_name = "Docker Host"
@@ -181,10 +198,14 @@ resource "docker_image" "main" {
     context = "./build"
     build_args = {
       USERNAME = local.username
+      CUDA_VER = data.coder_parameter.cuda_version.value
+      UBUNTU_VER = data.coder_parameter.ubuntu_version.value
     }
   }
   triggers = {
     dir_sha1 = sha1(join("", [for f in fileset(path.module, "build/*") : filesha1(f)]))
+    cuda     = data.coder_parameter.cuda_version.value
+    ubuntu   = data.coder_parameter.ubuntu_version.value
   }
 }
 
