@@ -98,5 +98,8 @@ RUN ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}" \
     && curl -fsSL https://raw.githubusercontent.com/romkatv/powerlevel10k/master/config/p10k-classic.zsh -o $HOME/.p10k.zsh \
     && printf '\n[[ -f $HOME/.p10k.zsh ]] && source $HOME/.p10k.zsh\n' >> $HOME/.zshrc
 
+# Set default as byobu
+RUN byobu-enable
+
 # Change git config
 RUN git config --global push.autoSetupRemote true
