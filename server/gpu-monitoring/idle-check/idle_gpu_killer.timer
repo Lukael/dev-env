@@ -1,0 +1,9 @@
+[Unit]
+Description=Run GPU Idle Killer at 22:00 KST daily
+
+[Timer]
+OnCalendar=*-*-* 22:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
