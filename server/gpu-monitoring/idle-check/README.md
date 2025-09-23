@@ -3,6 +3,7 @@
 1. Enter Slack bot token and channel name in [idle_gpu_killer.sh](./idle_gpu_killer.sh)
 
 2. Setup
+Enter the path of your service file in [idle_gpu_killer.service](./idle_gpu_killer.service)
 ```bash
 chmod +x ./idle_gpu_killer.sh
 sudo cp /etc/systemd/system/idle_gpu_killer.service
