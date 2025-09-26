@@ -66,7 +66,7 @@ for key in "${!idle_count[@]}"; do
     user=$(ps -o user= -p "$pid" 2>/dev/null);  [[ -z "$user"  ]] && user="unknown"
     fb_val=${last_fb[$key]:-0}
 
-    MSG="[$(TZ=Asia/Seoul date +"%Y-%m-%d %H:%M:%S")] 🚨 Idle GPU Process in Rack #2: USER=$user (PID=$pid NAME=$pname GPU=$gpu VRAM=${fb_val}MiB)"
+    MSG="[$(TZ=Asia/Seoul date +"%Y-%m-%d %H:%M:%S")] 🚨 Idle GPU Process in Server: USER=$user (PID=$pid NAME=$pname GPU=$gpu VRAM=${fb_val}MiB)"
     echo "[INFO] $MSG"
     send_slack_message "$MSG"
     kill -9 $pid
