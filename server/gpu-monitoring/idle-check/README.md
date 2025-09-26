@@ -6,8 +6,8 @@
 Enter the path of your service file in [idle_gpu_killer.service](./idle_gpu_killer.service)
 ```bash
 chmod +x ./idle_gpu_killer.sh
-sudo cp /etc/systemd/system/idle_gpu_killer.service
-sudo cp /etc/systemd/system/idle_gpu_killer.timer
+sudo cp idle_gpu_killer.service /etc/systemd/system
+sudo cp idle_gpu_killer.timer /etc/systemd/system
 ```
 You also fix the execution time in [idle_gpu_killer.timer](./idle_gpu_killer.timer) (default: 22:00 in KST)
 
