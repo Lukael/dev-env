@@ -3,5 +3,5 @@ Description=GPU Idle Killer Script
 
 [Service]
 Type=oneshot
-ExecStart=/bin/bash /home/ubuntu/gpu-monitoring-bot/idle_gpu_killer.sh 
+ExecStart=/bin/bash /home/ubuntu/dev-env/server/gpu-monitoring/idle-check/idle_gpu_killer.sh
 User=root
