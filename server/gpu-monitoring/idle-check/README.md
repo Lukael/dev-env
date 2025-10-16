@@ -24,3 +24,11 @@ sudo systemctl enable --now idle_gpu_killer.timer
 sudo systemctl status idle_gpu_killer.timer
 sudo systemctl status idle_gpu_killer.service
 ```
+
+## Troubleshooting
+
+* You need to check text parsing part in Line #36.
+  * It depends on the version of the Nvidia driver.
+```bash
+nvidia-smi pmon -c 1 -s um
+```
