@@ -86,7 +86,7 @@ def api_metrics():
     servers = cfg.get("servers", [])
     ssh_options = cfg.get("ssh_options", [])
 
-    remote_cmd = request.args.get("cmd", "/usr/local/bin/gpu_docker_metrics.sh")
+    remote_cmd = request.args.get("cmd", "/usr/local/bin/docker_metrics.sh")
 
     results: List[Dict[str, Any]] = []
     rows: List[Dict[str, Any]] = []
@@ -116,6 +116,8 @@ def api_metrics():
                     item.setdefault("container_user", "root")
                     item.setdefault("gpu_util", 0)
                     item.setdefault("vram_mb", 0)
+                    item.setdefault("total_vram", 0)
+                    item.setdefault("used_mem", 0)
                     item.setdefault("process", "unknown")
                     rows.append(item)
 
