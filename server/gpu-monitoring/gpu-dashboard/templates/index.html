@@ -91,6 +91,19 @@
             text-align: right;
         }
 
+        .toggle-btn {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background: #fafafa;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .toggle-btn:hover {
+            background: #f0f0f0;
+        }
+
         .muted {
             color: #666;
             font-size: 12px;
@@ -202,10 +215,15 @@
 
     <script>
         const REFRESH_SEC = 5;
+        const openDetails = new Set(); // server -> expanded state
         document.getElementById("intervalLabel").textContent = REFRESH_SEC;
 
         function esc(s) {
             return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        function slugifyId(s) {
+            return String(s || "unknown").replace(/[^A-Za-z0-9_-]/g, "-");
         }
 
         function groupByServer(rows) {
@@ -235,6 +253,8 @@
 
         function renderServerTable(server, rows) {
             const { containers, maxUtil, totalVram } = summarize(rows);
+            const detailId = `gpu-details-${slugifyId(server)}`;
+            const isOpen = openDetails.has(server);
 
             const header = `
       <div class="server-header">
@@ -368,7 +388,12 @@
         <div class="divider"></div>
 
         ${barChart}
-        ${gpuSections}
+        <div style="margin: 6px 0 4px;">
+          <button class="toggle-btn" data-target="${detailId}" data-server="${esc(server)}">${isOpen ? "Hide GPU tables" : "Show GPU tables"}</button>
+        </div>
+        <div id="${detailId}" class="gpu-details" style="${isOpen ? "" : "display: none;"}">
+          ${gpuSections}
+        </div>
       </div>
     `;
         }
@@ -385,6 +410,24 @@
 
             const html = servers.map(s => renderServerTable(s, groups[s])).join("");
             document.getElementById("content").innerHTML = html || `<div class="empty">No matching rows.</div>`;
+
+            // Attach toggle handlers after render
+            document.querySelectorAll(".toggle-btn").forEach(btn => {
+                btn.onclick = () => {
+                    const targetId = btn.dataset.target;
+                    const server = btn.dataset.server;
+                    const el = document.getElementById(targetId);
+                    if (!el || !server) return;
+                    const hidden = el.style.display === "none";
+                    el.style.display = hidden ? "" : "none";
+                    btn.textContent = hidden ? "Hide GPU tables" : "Show GPU tables";
+                    if (hidden) {
+                        openDetails.add(server);
+                    } else {
+                        openDetails.delete(server);
+                    }
+                };
+            });
         }
 
         function formatKst(utcTs) {
