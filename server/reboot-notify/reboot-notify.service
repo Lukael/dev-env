@@ -1,0 +1,11 @@
+[Unit]
+Description=Send Slack notification on reboot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/slack-reboot-notify.sh
+
+[Install]
+WantedBy=multi-user.target
