@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==== Settings ====
-SLACK_TOKEN=""  		 	# Slack Bot User OAuth Token
+SLACK_TOKEN=""  		 	      # Slack Bot User OAuth Token (You can get it from Slack API)
 CHANNEL=""                  # Slack channel name (without #)
 
 GPU_UTIL_THRESHOLD=5    # GPU Usage(SM) Threshold
