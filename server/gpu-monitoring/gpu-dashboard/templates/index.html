@@ -44,6 +44,53 @@
             margin: 10px 0 6px;
         }
 
+        .gpu-bar-chart {
+            margin: 6px 0 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .gpu-bar-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .gpu-bar-label {
+            width: 64px;
+            text-align: right;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .gpu-bar-track {
+            flex: 1;
+            background: #f5f5f5;
+            border-radius: 8px;
+            height: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .gpu-bar-fill {
+            background: #6aa9ff;
+            height: 100%;
+            border-radius: 8px;
+            min-width: 2px;
+        }
+
+        .gpu-bar-fill.bad {
+            background: #f39;
+        }
+
+        .gpu-bar-meta {
+            font-size: 12px;
+            color: #555;
+            min-width: 140px;
+            text-align: right;
+        }
+
         .muted {
             color: #666;
             font-size: 12px;
@@ -86,6 +133,7 @@
             border-collapse: collapse;
             width: 100%;
             margin-top: 10px;
+            table-layout: fixed;
         }
 
         th,
@@ -94,6 +142,8 @@
             padding: 8px 10px;
             text-align: left;
             font-size: 14px;
+            word-break: break-word;
+            white-space: normal;
         }
 
         th {
@@ -190,10 +240,7 @@
       <div class="server-header">
         <div class="server-title">${esc(server)}</div>
         <div class="server-meta">
-          Rows: <span class="mono">${rows.length}</span> ·
-          Containers: <span class="mono">${containers}</span> ·
-          Max util: <span class="mono">${maxUtil}%</span> ·
-          Sum VRAM: <span class="mono">${totalVram} MB</span>
+          Rows: <span class="mono">${rows.length}</span>
         </div>
       </div>
     `;
@@ -221,14 +268,9 @@
                 return String(a).localeCompare(String(b));
             });
 
-            const gpuSections = gpuIdxs.map((gpu, i) => {
+            const gpuStats = gpuIdxs.map(gpu => {
                 const gpuRows = byGpu[gpu];
-                // Sort within GPU: highest util then highest vram
-                gpuRows.sort((a, b) => (Number(b.gpu_util ?? 0) - Number(a.gpu_util ?? 0)) ||
-                    (Number(b.vram_mb ?? 0) - Number(a.vram_mb ?? 0)));
-
-                // Best effort VRAM stat per GPU
-                const vramStat = gpuRows.reduce(
+                const stat = gpuRows.reduce(
                     (acc, r) => {
                         const used = Number(r.used_mem ?? 0);
                         const total = Number(r.total_vram ?? 0);
@@ -238,7 +280,36 @@
                     },
                     { used: 0, total: 0 }
                 );
-                const vramPct = vramStat.total > 0 ? Math.round((vramStat.used / vramStat.total) * 100) : 0;
+                const pct = stat.total > 0 ? Math.round((stat.used / stat.total) * 100) : 0;
+                return { gpu, used: stat.used, total: stat.total, pct };
+            });
+
+            const maxTotalVram = gpuStats.reduce((m, s) => (s.total > m ? s.total : m), 0) || 1;
+
+            const barChart = `
+        <div class="gpu-bar-chart">
+          ${gpuStats.map(s => {
+                const widthPct = Math.min(100, Math.round((s.used / maxTotalVram) * 100));
+                return `
+            <div class="gpu-bar-row" aria-label="GPU ${esc(s.gpu === "" ? "?" : s.gpu)} VRAM ${s.used}/${s.total} MB">
+              <div class="gpu-bar-label">GPU ${esc(s.gpu === "" ? "?" : s.gpu)}</div>
+              <div class="gpu-bar-track">
+                <div class="gpu-bar-fill ${s.pct >= 80 ? 'bad' : ''}" style="width:${widthPct}%;"></div>
+              </div>
+              <div class="gpu-bar-meta mono">${s.used}/${s.total} MB${s.total > 0 ? ` (${s.pct}%)` : ""}</div>
+            </div>
+          `;
+            }).join("")}
+        </div>
+      `;
+
+            const gpuSections = gpuIdxs.map((gpu, i) => {
+                const gpuRows = byGpu[gpu];
+                // Sort within GPU: highest util then highest vram
+                gpuRows.sort((a, b) => (Number(b.gpu_util ?? 0) - Number(a.gpu_util ?? 0)) ||
+                    (Number(b.vram_mb ?? 0) - Number(a.vram_mb ?? 0)));
+
+                const vramStat = gpuStats.find(s => s.gpu === gpu) || { used: 0, total: 0, pct: 0 };
 
                 const body = gpuRows.map(r => {
                     const util = Number(r.gpu_util ?? 0);
@@ -262,12 +333,17 @@
         <div class="gpu-section">
           <div class="gpu-header">
             <div>GPU <span class="mono">${esc(gpu === "" ? "?" : gpu)}</span></div>
-            <div class="server-meta">
-              VRAM: <span class="mono">${vramStat.used}/${vramStat.total} MB</span>
-              ${vramStat.total > 0 ? `<span class="mono">(${vramPct}%)</span>` : ""}
-            </div>
           </div>
           <table>
+            <colgroup>
+              <col style="width:8%;">
+              <col style="width:10%;">
+              <col style="width:22%;">
+              <col style="width:15%;">
+              <col style="width:25%;">
+              <col style="width:10%;">
+              <col style="width:10%;">
+            </colgroup>
             <thead>
               <tr>
                 <th>GPU</th>
@@ -291,6 +367,7 @@
         ${header}
         <div class="divider"></div>
 
+        ${barChart}
         ${gpuSections}
       </div>
     `;
