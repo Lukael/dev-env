@@ -35,6 +35,17 @@ while IFS=',' read -r idx util; do
   [[ -n "$idx" ]] && UTIL["$idx"]="$util"
 done <<< "$GPU_UTIL"
 
+GPU_MEM="$(nvidia-smi --query-gpu=index,memory.total,memory.used --format=csv,noheader,nounits 2>/dev/null || true)"
+declare -A MEM_TOTAL
+declare -A MEM_USED
+while IFS=',' read -r idx total used; do
+   idx="$(echo "$idx" | xargs)"
+   total="$(echo "$total" | xargs)"
+   used="$(echo "$used" | xargs)"
+   [[ -n "$idx" ]] && MEM_TOTAL["$idx"]="$total"
+   [[ -n "$idx" ]] && MEM_USED["$idx"]="$used"
+done <<< "$GPU_MEM"
+
 # --- GPU compute processes (gpu_uuid,pid,used_memory) ---
 GPU_PROCS="$(nvidia-smi --query-compute-apps=gpu_uuid,pid,used_memory --format=csv,noheader,nounits 2>/dev/null || true)"
 
@@ -95,6 +106,9 @@ while IFS=',' read -r gpu_uuid pid vram; do
   gpu_idx="${UUID2IDX[$gpu_uuid]:-}"
   [[ -z "$gpu_idx" ]] && gpu_idx=-1
 
+  mem_total="${MEM_TOTAL[$gpu_idx]:-0}"
+  mem_used="${MEM_USED[$gpu_idx]:-0}"
+
   util="${UTIL[$gpu_idx]:-0}"
   [[ -z "$util" || "$util" == "-" ]] && util=0
 
@@ -116,6 +130,8 @@ while IFS=',' read -r gpu_uuid pid vram; do
     "gpu_idx": $gpu_idx,
     "pid": $pid,
     "process": "$pname",
+    "total_vram": "$mem_total",
+    "used_mem": "$mem_used",
     "vram_mb": $vram,
     "gpu_util": $util,
     "container": "$container",
