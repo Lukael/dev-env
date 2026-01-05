@@ -2,6 +2,7 @@
 Description=Run GPU Idle Killer at 22:00 KST daily
 
 [Timer]
+OnCalendar=*-*-* 08:00:00
 OnCalendar=*-*-* 22:00:00
 Persistent=false
 

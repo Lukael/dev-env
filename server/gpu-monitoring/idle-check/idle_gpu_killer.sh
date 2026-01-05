@@ -34,9 +34,9 @@ for i in $(seq 1 $REPEAT_COUNT); do
   now_fmt=$(TZ=Asia/Seoul date +"%Y-%m-%d %H:%M:%S")
 
   pmon_output=$(nvidia-smi pmon -c 1 -s um | tail -n +3 | \
-                awk '{printf "%s,%s,%s,%s,%s,%s,%s,%s\n",$1,$2,$3,$4,$5,$6,$7,$8}')
+                awk '{printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",$1,$2,$3,$4,$5,$6,$7,$8,$9,$10}')
 
-  while IFS=, read -r gpu pid type sm mem enc dec fb; do
+  while IFS=, read -r gpu pid type sm mem enc dec jpg ofa fb; do
     [[ -z "$pid" || "$pid" == "-" || "$pid" == "0" ]] && continue
 
     [[ "$sm"  == "-" ]] && sm=0
