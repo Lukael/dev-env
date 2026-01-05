@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>GPU Docker Dashboard</title>
+    <style>
+        body {
+            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+            margin: 20px;
+        }
+
+        .row {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            padding: 12px 14px;
+        }
+
+        .muted {
+            color: #666;
+            font-size: 12px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 12px;
+        }
+
+        th,
+        td {
+            border-bottom: 1px solid #eee;
+            padding: 8px 10px;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        th {
+            position: sticky;
+            top: 0;
+            background: #fff;
+        }
+
+        input {
+            padding: 8px 10px;
+            border-radius: 10px;
+            border: 1px solid #ddd;
+            min-width: 280px;
+        }
+
+        .pill {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            border: 1px solid #ddd;
+            font-size: 12px;
+        }
+
+        .bad {
+            border-color: #f3b;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>GPU + Docker Process Dashboard</h2>
+
+    <div class="row">
+        <div class="card">
+            <div><b>Status</b></div>
+            <div class="muted" id="status">Loading...</div>
+        </div>
+
+        <div class="card">
+            <div><b>Refresh</b></div>
+            <div class="muted">Auto refresh every <span id="intervalLabel">5</span>s</div>
+        </div>
+
+        <div class="card" style="flex: 1;">
+            <div><b>Filter</b></div>
+            <div class="muted">Search server/container/container_user/user/process</div>
+            <input id="q" placeholder="e.g., gpu-b or training or root or appuser" />
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Server</th>
+                <th>GPU Index</th>
+                <th>PID</th>
+                <th>Container</th>
+                <th>Container User</th>
+                <th>Process</th>
+                <th>GPU Util (%)</th>
+                <th>VRAM (MB)</th>
+            </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+    </table>
+
+    <script>
+        const REFRESH_SEC = 5;
+        document.getElementById("intervalLabel").textContent = REFRESH_SEC;
+
+        function esc(s) {
+            return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        function renderRows(rows) {
+            const q = document.getElementById("q").value.trim().toLowerCase();
+            const filtered = !q ? rows : rows.filter(r => {
+                const s = `${r.server} ${r.container} ${r.container_user} ${r.process} ${r.gpu_idx} ${r.pid}`.toLowerCase();
+                return s.includes(q);
+            });
+
+            // Sort: highest GPU util first, then highest VRAM
+            filtered.sort((a, b) => (Number(b.gpu_util || 0) - Number(a.gpu_util || 0)) || (Number(b.vram_mb || 0) - Number(a.vram_mb || 0)));
+
+            const tb = document.getElementById("tbody");
+            tb.innerHTML = filtered.map(r => {
+                const util = Number(r.gpu_util || 0);
+                const vram = Number(r.vram_mb || 0);
+                const utilBadge = `<span class="pill ${util >= 80 ? 'bad' : ''}">${util}</span>`;
+                const vramBadge = `<span class="pill ${vram >= 20000 ? 'bad' : ''}">${vram}</span>`;
+                return `
+        <tr>
+          <td>${esc(r.server)}</td>
+          <td class="muted">${esc(r.gpu_idx || "")}</td>
+          <td>${esc(r.pid)}</td>
+          <td><b>${esc(r.container || "")}</b></td>
+          <td>${esc(r.container_user || "")}</td>
+          <td>${esc(r.process || "")}</td>
+          <td>${utilBadge}</td>
+          <td>${vramBadge}</td>
+        </tr>
+      `;
+            }).join("");
+        }
+
+        async function tick() {
+            const status = document.getElementById("status");
+            try {
+                const res = await fetch("/api/metrics", { cache: "no-store" });
+                const data = await res.json();
+
+                const okCount = (data.servers || []).filter(s => s.ok).length;
+                const total = (data.servers || []).length;
+                status.textContent = `Last update: ${data.ts_utc} (UTC) | Servers OK: ${okCount}/${total} | Rows: ${(data.rows || []).length}`;
+
+                renderRows(data.rows || []);
+            } catch (e) {
+                status.textContent = `Error: ${e}`;
+            }
+        }
+
+        document.getElementById("q").addEventListener("input", () => tick());
+        tick();
+        setInterval(tick, REFRESH_SEC * 1000);
+    </script>
+</body>
+
+</html>

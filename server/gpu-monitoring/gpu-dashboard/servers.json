@@ -1,0 +1,36 @@
+{
+    "servers": [
+        {
+            "name": "gpu-a",
+            "host": "gpu-a",
+            "user": "ubuntu",
+            "port": 22
+        },
+        {
+            "name": "gpu-b",
+            "host": "gpu-b",
+            "user": "ubuntu",
+            "port": 22
+        },
+        {
+            "name": "gpu-c",
+            "host": "gpu-c",
+            "user": "ubuntu",
+            "port": 22
+        },
+        {
+            "name": "gpu-d",
+            "host": "gpu-d",
+            "user": "ubuntu",
+            "port": 22
+        }
+    ],
+    "ssh_options": [
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=4",
+        "-o",
+        "StrictHostKeyChecking=accept-new"
+    ]
+}
