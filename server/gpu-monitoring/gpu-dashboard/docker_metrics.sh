@@ -91,6 +91,9 @@ find_container_for_pid() {
 }
 
 # --- Emit JSON array ---
+
+declare -A HAS_PROC
+
 echo "["
 first=1
 
@@ -105,6 +108,8 @@ while IFS=',' read -r gpu_uuid pid vram; do
   # Convert UUID -> index
   gpu_idx="${UUID2IDX[$gpu_uuid]:-}"
   [[ -z "$gpu_idx" ]] && gpu_idx=-1
+
+  HAS_PROC["$gpu_idx"]=1
 
   mem_total="${MEM_TOTAL[$gpu_idx]:-0}"
   mem_used="${MEM_USED[$gpu_idx]:-0}"
@@ -135,9 +140,41 @@ while IFS=',' read -r gpu_uuid pid vram; do
     "vram_mb": $vram,
     "gpu_util": $util,
     "container": "$container",
-    "container_user": "$container_user"
+    "container_user": "$container_user",
+    "idle": false
   }
 EOF
 done <<< "$GPU_PROCS"
+
+ALL_GPU_IDX="$(nvidia-smi --query-gpu=index --format=csv,noheader 2>/dev/null || true)"
+
+while read -r idx; do
+  idx="$(echo "$idx" | xargs)"
+  [[ -z "$idx" ]] && continue
+
+  # If this GPU had no compute process row, emit an idle row
+  if [[ -z "${HAS_PROC[$idx]:-}" ]]; then
+    util="${UTIL[$idx]:-0}"
+    [[ -z "$util" || "$util" == "-" ]] && util=0
+
+    [[ $first -eq 0 ]] && echo ","
+    first=0
+
+    cat <<EOF
+  {
+    "server": "$HOST",
+    "gpu_idx": $idx,
+    "pid": 0,
+    "user": "",
+    "process": "",
+    "vram_mb": 0,
+    "gpu_util": $util,
+    "container": "(idle)",
+    "container_user": "",
+    "idle": true
+  }
+EOF
+  fi
+done <<< "$ALL_GPU_IDX"
 
 echo "]"
