@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>GPU Docker Dashboard</title>
+    <title>GPU Dashboard</title>
     <style>
         body {
             font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
@@ -15,13 +15,33 @@
             display: flex;
             gap: 16px;
             flex-wrap: wrap;
-            align-items: center;
+            align-items: stretch;
         }
 
         .card {
             border: 1px solid #ddd;
             border-radius: 12px;
             padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .gpu-section {
+            margin-top: 10px;
+        }
+
+        .gpu-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-weight: 600;
+            margin: 6px 0;
+        }
+
+        .gpu-divider {
+            border-top: 1px dashed #e5e5e5;
+            margin: 10px 0 6px;
         }
 
         .muted {
@@ -29,10 +49,43 @@
             font-size: 12px;
         }
 
+        input {
+            padding: 8px 10px;
+            border-radius: 10px;
+            border: 1px solid #ddd;
+            min-width: 280px;
+        }
+
+        .server-section {
+            margin-top: 18px;
+        }
+
+        .server-header {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .server-title {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .server-meta {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .divider {
+            border-top: 1px solid #eaeaea;
+            margin: 14px 0 12px;
+        }
+
         table {
             border-collapse: collapse;
             width: 100%;
-            margin-top: 12px;
+            margin-top: 10px;
         }
 
         th,
@@ -47,13 +100,7 @@
             position: sticky;
             top: 0;
             background: #fff;
-        }
-
-        input {
-            padding: 8px 10px;
-            border-radius: 10px;
-            border: 1px solid #ddd;
-            min-width: 280px;
+            z-index: 1;
         }
 
         .pill {
@@ -67,11 +114,21 @@
         .bad {
             border-color: #f3b;
         }
+
+        .mono {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        }
+
+        .empty {
+            padding: 10px 0;
+            color: #666;
+            font-size: 13px;
+        }
     </style>
 </head>
 
 <body>
-    <h2>GPU + Docker Process Dashboard</h2>
+    <h2>GPU Process Dashboard</h2>
 
     <div class="row">
         <div class="card">
@@ -86,26 +143,12 @@
 
         <div class="card" style="flex: 1;">
             <div><b>Filter</b></div>
-            <div class="muted">Search server/container/container_user/user/process</div>
-            <input id="q" placeholder="e.g., gpu-b or training or root or appuser" />
+            <div class="muted">Search server/container/user/process</div>
+            <input id="q" placeholder="e.g., oisl0 or training or root or appuser" />
         </div>
     </div>
 
-    <table>
-        <thead>
-            <tr>
-                <th>Server</th>
-                <th>GPU Index</th>
-                <th>PID</th>
-                <th>Container</th>
-                <th>Container User</th>
-                <th>Process</th>
-                <th>GPU Util (%)</th>
-                <th>VRAM (MB)</th>
-            </tr>
-        </thead>
-        <tbody id="tbody"></tbody>
-    </table>
+    <div id="content"></div>
 
     <script>
         const REFRESH_SEC = 5;
@@ -115,35 +158,163 @@
             return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         }
 
-        function renderRows(rows) {
+        function groupByServer(rows) {
+            const g = {};
+            for (const r of rows) {
+                const server = r.server || "unknown";
+                (g[server] = g[server] || []).push(r);
+            }
+            return g;
+        }
+
+        function summarize(rows) {
+            // Best-effort summary per server
+            const containers = new Set();
+            let maxUtil = 0;
+            let totalVram = 0;
+
+            for (const r of rows) {
+                if (r.container) containers.add(r.container);
+                const util = Number(r.gpu_util ?? 0);
+                const vram = Number(r.vram_mb ?? 0);
+                if (util > maxUtil) maxUtil = util;
+                if (Number.isFinite(vram)) totalVram += vram;
+            }
+            return { containers: containers.size, maxUtil, totalVram };
+        }
+
+        function renderServerTable(server, rows) {
+            const { containers, maxUtil, totalVram } = summarize(rows);
+
+            const header = `
+      <div class="server-header">
+        <div class="server-title">${esc(server)}</div>
+        <div class="server-meta">
+          Rows: <span class="mono">${rows.length}</span> ·
+          Containers: <span class="mono">${containers}</span> ·
+          Max util: <span class="mono">${maxUtil}%</span> ·
+          Sum VRAM: <span class="mono">${totalVram} MB</span>
+        </div>
+      </div>
+    `;
+
+            if (!rows.length) {
+                return `
+        <div class="server-section">
+          ${header}
+          <div class="divider"></div>
+          <div class="empty">No GPU compute processes found.</div>
+        </div>
+      `;
+            }
+
+            const byGpu = {};
+            for (const r of rows) {
+                const idx = r.gpu_idx ?? "";
+                (byGpu[idx] = byGpu[idx] || []).push(r);
+            }
+
+            const gpuIdxs = Object.keys(byGpu).sort((a, b) => {
+                const na = Number(a);
+                const nb = Number(b);
+                if (!Number.isNaN(na) && !Number.isNaN(nb)) return na - nb;
+                return String(a).localeCompare(String(b));
+            });
+
+            const gpuSections = gpuIdxs.map((gpu, i) => {
+                const gpuRows = byGpu[gpu];
+                // Sort within GPU: highest util then highest vram
+                gpuRows.sort((a, b) => (Number(b.gpu_util ?? 0) - Number(a.gpu_util ?? 0)) ||
+                    (Number(b.vram_mb ?? 0) - Number(a.vram_mb ?? 0)));
+
+                // Best effort VRAM stat per GPU
+                const vramStat = gpuRows.reduce(
+                    (acc, r) => {
+                        const used = Number(r.used_mem ?? 0);
+                        const total = Number(r.total_vram ?? 0);
+                        if (Number.isFinite(used) && used > acc.used) acc.used = used;
+                        if (Number.isFinite(total) && total > acc.total) acc.total = total;
+                        return acc;
+                    },
+                    { used: 0, total: 0 }
+                );
+                const vramPct = vramStat.total > 0 ? Math.round((vramStat.used / vramStat.total) * 100) : 0;
+
+                const body = gpuRows.map(r => {
+                    const util = Number(r.gpu_util ?? 0);
+                    const vram = Number(r.vram_mb ?? 0);
+                    const utilBadge = `<span class="pill ${util >= 80 ? 'bad' : ''}">${util}</span>`;
+                    const vramBadge = `<span class="pill ${vram >= 20000 ? 'bad' : ''}">${vram}</span>`;
+                    return `
+            <tr>
+              <td class="mono">${esc(gpu === "" ? "?" : gpu)}</td>
+              <td class="mono">${esc(r.pid ?? "")}</td>
+              <td>${esc(r.container ?? "")}</td>
+              <td><b>${esc(r.container_user ?? "")}</b></td>
+              <td>${esc(r.process ?? "")}</td>
+              <td>${utilBadge}</td>
+              <td>${vramBadge}</td>
+            </tr>
+          `;
+                }).join("");
+
+                return `
+        <div class="gpu-section">
+          <div class="gpu-header">
+            <div>GPU <span class="mono">${esc(gpu === "" ? "?" : gpu)}</span></div>
+            <div class="server-meta">
+              VRAM: <span class="mono">${vramStat.used}/${vramStat.total} MB</span>
+              ${vramStat.total > 0 ? `<span class="mono">(${vramPct}%)</span>` : ""}
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>GPU</th>
+                <th>PID</th>
+                <th>Container</th>
+                <th>Container User</th>
+                <th>Process</th>
+                <th>GPU Util (%)</th>
+                <th>VRAM (MB)</th>
+              </tr>
+            </thead>
+            <tbody>${body}</tbody>
+          </table>
+        </div>
+        ${i === gpuIdxs.length - 1 ? "" : '<div class="divider gpu-divider"></div>'}
+      `;
+            }).join("");
+
+            return `
+      <div class="server-section">
+        ${header}
+        <div class="divider"></div>
+
+        ${gpuSections}
+      </div>
+    `;
+        }
+
+        function renderAll(rows) {
             const q = document.getElementById("q").value.trim().toLowerCase();
             const filtered = !q ? rows : rows.filter(r => {
-                const s = `${r.server} ${r.container} ${r.container_user} ${r.process} ${r.gpu_idx} ${r.pid}`.toLowerCase();
+                const s = `${r.server} gpu${r.gpu_idx} ${r.container} ${r.container_user} ${r.user} ${r.process} ${r.pid}`.toLowerCase();
                 return s.includes(q);
             });
 
-            // Sort: highest GPU util first, then highest VRAM
-            filtered.sort((a, b) => (Number(b.gpu_util || 0) - Number(a.gpu_util || 0)) || (Number(b.vram_mb || 0) - Number(a.vram_mb || 0)));
+            const groups = groupByServer(filtered);
+            const servers = Object.keys(groups).sort();
 
-            const tb = document.getElementById("tbody");
-            tb.innerHTML = filtered.map(r => {
-                const util = Number(r.gpu_util || 0);
-                const vram = Number(r.vram_mb || 0);
-                const utilBadge = `<span class="pill ${util >= 80 ? 'bad' : ''}">${util}</span>`;
-                const vramBadge = `<span class="pill ${vram >= 20000 ? 'bad' : ''}">${vram}</span>`;
-                return `
-        <tr>
-          <td>${esc(r.server)}</td>
-          <td class="muted">${esc(r.gpu_idx || "")}</td>
-          <td>${esc(r.pid)}</td>
-          <td><b>${esc(r.container || "")}</b></td>
-          <td>${esc(r.container_user || "")}</td>
-          <td>${esc(r.process || "")}</td>
-          <td>${utilBadge}</td>
-          <td>${vramBadge}</td>
-        </tr>
-      `;
-            }).join("");
+            const html = servers.map(s => renderServerTable(s, groups[s])).join("");
+            document.getElementById("content").innerHTML = html || `<div class="empty">No matching rows.</div>`;
+        }
+
+        function formatKst(utcTs) {
+            const d = new Date(utcTs);
+            if (Number.isNaN(d.getTime())) return utcTs ?? "";
+            const pad = (n) => String(n).padStart(2, "0");
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
         }
 
         async function tick() {
@@ -154,9 +325,9 @@
 
                 const okCount = (data.servers || []).filter(s => s.ok).length;
                 const total = (data.servers || []).length;
-                status.textContent = `Last update: ${data.ts_utc} (UTC) | Servers OK: ${okCount}/${total} | Rows: ${(data.rows || []).length}`;
+                status.textContent = `Last update: ${formatKst(data.ts_utc)} (KST) | Servers OK: ${okCount}/${total} | Rows: ${(data.rows || []).length}`;
 
-                renderRows(data.rows || []);
+                renderAll(data.rows || []);
             } catch (e) {
                 status.textContent = `Error: ${e}`;
             }
