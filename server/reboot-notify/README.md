@@ -13,6 +13,7 @@ sudo cp reboot-notify.service /etc/systemd/system
 
 ```bash
 sudo systemctl daemon-reload
+sudo systemctl enable reboot-notify.sh
 ```
 
 4. Check system service
