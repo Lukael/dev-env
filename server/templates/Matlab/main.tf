@@ -63,7 +63,14 @@ variable "docker_socket" {
 provider "docker" {
   # Defaulting to null if the variable is an empty string lets us have an optional variable without having to set our own default
   host = data.coder_parameter.docker_host.value != "" ? data.coder_parameter.docker_host.value : null
-  ssh_opts = ["-i", "/var/lib/coder/.ssh/docker"]
+  ssh_opts = [
+    "-i", "/var/lib/coder/.ssh/docker",
+    "-o", "ServerAliveInterval=30",
+    "-o", "ServerAliveCountMax=6",
+    "-o", "TCPKeepAlive=yes",
+    "-o", "ConnectTimeout=20",
+    "-o", "Compression=yes",
+  ]
 }
 
 provider "coder" {
