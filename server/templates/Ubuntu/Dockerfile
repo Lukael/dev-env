@@ -40,6 +40,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     zip && \
     apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
+# Ready to install multi version of python
+RUN apt install -y software-properties-common && add-apt-repository ppa:deadsnakes/ppa && apt update
+RUN apt update
+
 # Install lazygit
 RUN set -eux; \
     LAZYGIT_VERSION=$(curl -s "https://api.github.com/repos/jesseduffield/lazygit/releases/latest" \
