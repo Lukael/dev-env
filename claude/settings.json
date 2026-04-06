@@ -1,0 +1,34 @@
+{
+  "permissions": {
+	"allow": [
+	  "Bash(git add *)",
+	  "Bash(git commit *)",
+      "Bash(git status)",
+	  "Bash(poetry *)"
+	],
+	"deny": [
+	  "Bash(rm *)"
+	],
+    "defaultMode": "acceptEdits"
+  },
+  "model": "opus",
+  "effortLevel": "medium",
+  "outputStyle": "Explanatory",
+  "enabledPlugins": {
+    "context7@claude-plugins-official": true,
+    "oh-my-claudecode@omc": true
+  },
+  "extraKnownMarketplaces": {
+    "omc": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/Yeachan-Heo/oh-my-claudecode.git"
+      }
+    }
+  },
+  "language": "Korean",
+    "attribution": {
+		"commit": "Co-Authored-By: Claude",
+		"pr": "Co-Authored-By: Claude"
+  }
+}
