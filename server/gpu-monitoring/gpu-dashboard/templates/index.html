@@ -137,6 +137,20 @@
             color: #666;
         }
 
+        .server-meta .warn {
+            color: #a15c00;
+            font-weight: 600;
+        }
+
+        .server-meta .error {
+            color: #b00020;
+            font-weight: 600;
+        }
+
+        .stale-row {
+            background: #fffaf0;
+        }
+
         .divider {
             border-top: 1px solid #eaeaea;
             margin: 14px 0 12px;
@@ -251,7 +265,36 @@
             return { containers: containers.size, maxUtil, totalVram };
         }
 
-        function renderServerTable(server, rows) {
+        function serverName(status) {
+            return status?.name || status?.host || "unknown";
+        }
+
+        function statusBadge(status) {
+            if (!status) return "";
+            if (status.loading) {
+                return `<span class="warn">loading</span>`;
+            }
+            if (status.ok) {
+                return `<span>ok</span>`;
+            }
+            if (status.has_cached_rows) {
+                return `<span class="warn">stale cache</span>`;
+            }
+            return `<span class="error">error</span>`;
+        }
+
+        function statusDetail(status) {
+            if (!status) return "";
+            const parts = [statusBadge(status)];
+            if (status.elapsed_ms) parts.push(`<span class="mono">${status.elapsed_ms}ms</span>`);
+            if (status.cache_age_sec !== null && status.cache_age_sec !== undefined) {
+                parts.push(`cache age <span class="mono">${status.cache_age_sec}s</span>`);
+            }
+            if (status.error && !status.ok) parts.push(esc(status.error));
+            return parts.join(" | ");
+        }
+
+        function renderServerTable(server, rows, status) {
             const { containers, maxUtil, totalVram } = summarize(rows);
             const detailId = `gpu-details-${slugifyId(server)}`;
             const isOpen = openDetails.has(server);
@@ -260,17 +303,22 @@
       <div class="server-header">
         <div class="server-title">${esc(server)}</div>
         <div class="server-meta">
-          Rows: <span class="mono">${rows.length}</span>
+          Rows: <span class="mono">${rows.length}</span>${status ? ` | ${statusDetail(status)}` : ""}
         </div>
       </div>
     `;
 
             if (!rows.length) {
+                const emptyMessage = status?.loading
+                    ? "Waiting for the first SSH refresh. Slow links will appear here once one poll succeeds."
+                    : status && !status.ok
+                        ? "No cached process data yet. Last SSH attempt failed or timed out."
+                        : "No GPU compute processes found.";
                 return `
         <div class="server-section">
           ${header}
           <div class="divider"></div>
-          <div class="empty">No GPU compute processes found.</div>
+          <div class="empty">${emptyMessage}</div>
         </div>
       `;
             }
@@ -337,7 +385,7 @@
                     const utilBadge = `<span class="pill ${util >= 80 ? 'bad' : ''}">${util}</span>`;
                     const vramBadge = `<span class="pill ${vram >= 20000 ? 'bad' : ''}">${vram}</span>`;
                     return `
-            <tr>
+            <tr class="${r.stale ? 'stale-row' : ''}">
               <td class="mono">${esc(gpu === "" ? "?" : gpu)}</td>
               <td class="mono">${esc(r.pid ?? "")}</td>
               <td>${esc(r.container ?? "")}</td>
@@ -398,7 +446,7 @@
     `;
         }
 
-        function renderAll(rows) {
+        function renderAll(rows, servers) {
             const q = document.getElementById("q").value.trim().toLowerCase();
             const filtered = !q ? rows : rows.filter(r => {
                 const s = `${r.server} gpu${r.gpu_idx} ${r.container} ${r.container_user} ${r.user} ${r.process} ${r.pid}`.toLowerCase();
@@ -406,9 +454,13 @@
             });
 
             const groups = groupByServer(filtered);
-            const servers = Object.keys(groups).sort();
+            const statuses = {};
+            for (const s of (servers || [])) {
+                statuses[serverName(s)] = s;
+            }
+            const names = Array.from(new Set([...Object.keys(statuses), ...Object.keys(groups)])).sort();
 
-            const html = servers.map(s => renderServerTable(s, groups[s])).join("");
+            const html = names.map(s => renderServerTable(s, groups[s] || [], statuses[s])).join("");
             document.getElementById("content").innerHTML = html || `<div class="empty">No matching rows.</div>`;
 
             // Attach toggle handlers after render
@@ -444,10 +496,13 @@
                 const data = await res.json();
 
                 const okCount = (data.servers || []).filter(s => s.ok).length;
+                const staleCount = (data.servers || []).filter(s => s.stale || (!s.ok && s.has_cached_rows)).length;
+                const loadingCount = (data.servers || []).filter(s => s.loading).length;
                 const total = (data.servers || []).length;
-                status.textContent = `Last update: ${formatKst(data.ts_utc)} (KST) | Servers OK: ${okCount}/${total} | Rows: ${(data.rows || []).length}`;
+                const refresh = data.refresh?.running ? " | refreshing..." : "";
+                status.textContent = `Last update: ${formatKst(data.ts_utc)} (KST) | OK: ${okCount}/${total} | Stale: ${staleCount} | Loading: ${loadingCount} | Rows: ${(data.rows || []).length}${refresh}`;
 
-                renderAll(data.rows || []);
+                renderAll(data.rows || [], data.servers || []);
             } catch (e) {
                 status.textContent = `Error: ${e}`;
             }

@@ -6,7 +6,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 WorkingDirectory=/opt/gpu-dashboard
-ExecStart=/opt/gpu-dashboard/.venv/bin/gunicorn -w 2 -b 0.0.0.0:50000 app:app
+ExecStart=/opt/gpu-dashboard/.venv/bin/gunicorn -w 1 -b 0.0.0.0:50000 app:app
 Restart=always
 RestartSec=3
 

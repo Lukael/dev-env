@@ -26,11 +26,16 @@
         }
     ],
     "ssh_options": [
+        "-C",
         "-o",
         "BatchMode=yes",
         "-o",
         "ConnectTimeout=4",
         "-o",
         "StrictHostKeyChecking=accept-new"
-    ]
+    ],
+    "remote_cmd": "/usr/local/bin/docker_metrics.sh",
+    "poll_interval_seconds": 5,
+    "ssh_command_timeout_seconds": 60,
+    "stale_after_seconds": 120
 }
